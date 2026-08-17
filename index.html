@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comprometido - Parcelas dos Cartões</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">C</div>
+        <div>
+          <strong>Comprometido</strong>
+          <span>Meu futuro financeiro</span>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-link active" data-section="dashboard">Visão geral</button>
+        <button class="nav-link" data-section="compras">Compras parceladas</button>
+        <button class="nav-link" data-section="cartoes">Cartões</button>
+        <button class="nav-link" data-section="dados">Dados e backup</button>
+      </nav>
+      <div class="sidebar-note">
+        <strong>Se eu não comprar mais nada...</strong>
+        <p id="debtFreeSidebar">Cadastre suas parcelas para ver quando elas terminam.</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">FINANÇAS PESSOAIS</p>
+          <h1 id="pageTitle">Visão geral</h1>
+        </div>
+        <button class="primary-button" id="quickAddPurchase">+ Nova compra</button>
+      </header>
+
+      <section id="dashboard" class="page-section active">
+        <div class="summary-grid">
+          <article class="metric-card accent">
+            <span>Parcelas deste mês</span>
+            <strong id="currentMonthTotal">R$ 0,00</strong>
+            <small id="currentMonthLabel">—</small>
+          </article>
+          <article class="metric-card">
+            <span>Saldo futuro</span>
+            <strong id="futureBalance">R$ 0,00</strong>
+            <small>parcelas atuais e futuras</small>
+          </article>
+          <article class="metric-card">
+            <span>Compras ativas</span>
+            <strong id="activePurchases">0</strong>
+            <small>com parcelas em aberto</small>
+          </article>
+          <article class="metric-card">
+            <span>Próxima liberação</span>
+            <strong id="nextReliefValue">R$ 0,00</strong>
+            <small id="nextReliefLabel">nenhuma parcela encerrando</small>
+          </article>
+        </div>
+
+        <div class="content-grid two-thirds">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="panel-kicker">PROJEÇÃO</span>
+                <h2>Comprometimento futuro</h2>
+              </div>
+              <select id="projectionMonths" class="compact-select">
+                <option value="12">12 meses</option>
+                <option value="18">18 meses</option>
+                <option value="24">24 meses</option>
+              </select>
+            </div>
+            <div id="projectionChart" class="chart"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="panel-kicker">ALÍVIO</span>
+                <h2>Parcelas que terminam</h2>
+              </div>
+            </div>
+            <div id="endingSoonList" class="ending-list empty-state">Nenhuma compra cadastrada.</div>
+          </article>
+        </div>
+
+        <div class="content-grid half">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="panel-kicker">POR CARTÃO</span>
+                <h2>Saldo restante</h2>
+              </div>
+            </div>
+            <div id="cardBreakdown" class="bar-list empty-state">Cadastre cartões e compras.</div>
+          </article>
+
+          <article class="panel insight-panel">
+            <span class="panel-kicker">INSIGHT</span>
+            <h2>Se você parar de parcelar hoje</h2>
+            <p id="debtFreeInsight">Cadastre suas parcelas para obter uma projeção.</p>
+            <div class="insight-stat">
+              <span>Valor mensal liberado no fim</span>
+              <strong id="finalReliefValue">R$ 0,00</strong>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="compras" class="page-section">
+        <div class="section-toolbar">
+          <div>
+            <h2>Compras parceladas</h2>
+            <p>Cadastre inclusive compras que já estão em andamento, como 3/10.</p>
+          </div>
+          <button class="primary-button" id="addPurchaseButton">+ Nova compra</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Compra</th>
+                  <th>Cartão</th>
+                  <th>Parcela</th>
+                  <th>Valor</th>
+                  <th>Termina</th>
+                  <th>Restante</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="purchasesTableBody"></tbody>
+            </table>
+          </div>
+          <div id="purchasesEmpty" class="empty-table">Nenhuma compra cadastrada.</div>
+        </div>
+      </section>
+
+      <section id="cartoes" class="page-section">
+        <div class="section-toolbar">
+          <div>
+            <h2>Cartões</h2>
+            <p>Use cores diferentes para identificar cada cartão visualmente.</p>
+          </div>
+          <button class="primary-button" id="addCardButton">+ Novo cartão</button>
+        </div>
+        <div id="cardsGrid" class="cards-grid"></div>
+      </section>
+
+      <section id="dados" class="page-section">
+        <div class="section-toolbar">
+          <div>
+            <h2>Dados e backup</h2>
+            <p>Os dados ficam somente neste navegador. Exporte seu JSON para fazer backup.</p>
+          </div>
+        </div>
+        <div class="content-grid half">
+          <article class="panel data-action-card">
+            <h3>Exportar backup</h3>
+            <p>Baixa cartões, compras e parcelas em um único arquivo JSON.</p>
+            <button id="exportData" class="secondary-button">Baixar JSON</button>
+          </article>
+          <article class="panel data-action-card">
+            <h3>Importar backup</h3>
+            <p>Restaura um backup exportado anteriormente.</p>
+            <label class="secondary-button file-button">
+              Selecionar JSON
+              <input type="file" id="importData" accept="application/json,.json" hidden />
+            </label>
+          </article>
+        </div>
+        <article class="panel danger-zone">
+          <h3>Apagar todos os dados locais</h3>
+          <p>Esta ação remove os dados deste navegador.</p>
+          <button id="clearData" class="danger-button">Apagar tudo</button>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="cardDialog" class="modal">
+    <form id="cardForm" method="dialog">
+      <div class="modal-header">
+        <div><span class="panel-kicker">CARTÃO</span><h2>Novo cartão</h2></div>
+        <button type="button" class="icon-button close-dialog">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Nome do cartão<input id="cardName" required placeholder="Ex.: Nubank" /></label>
+        <label>Limite<input id="cardLimit" type="number" step="0.01" min="0" placeholder="8000" /></label>
+        <label>Cor<input id="cardColor" type="color" value="#6d5dfc" /></label>
+        <label>Dia fechamento<input id="cardClosing" type="number" min="1" max="31" placeholder="10" /></label>
+        <label>Dia vencimento<input id="cardDue" type="number" min="1" max="31" placeholder="17" /></label>
+      </div>
+      <div class="modal-actions"><button type="button" class="secondary-button close-dialog">Cancelar</button><button class="primary-button" value="default">Salvar cartão</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="purchaseDialog" class="modal large">
+    <form id="purchaseForm" method="dialog">
+      <div class="modal-header">
+        <div><span class="panel-kicker">COMPRA PARCELADA</span><h2>Nova compra</h2></div>
+        <button type="button" class="icon-button close-dialog">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Descrição<input id="purchaseDescription" required placeholder="Ex.: Notebook" /></label>
+        <label>Cartão<select id="purchaseCard" required></select></label>
+        <label>Categoria<select id="purchaseCategory"><option>Tecnologia</option><option>Casa</option><option>Moto</option><option>Saúde</option><option>Lazer</option><option>Alimentação</option><option>Roupas</option><option>Viagem</option><option>Outros</option></select></label>
+        <label>Valor da parcela<input id="installmentValue" type="number" step="0.01" min="0.01" required placeholder="320,00" /></label>
+        <label>Parcela atual<div class="installment-pair"><input id="currentInstallment" type="number" min="1" required placeholder="3" /><span>/</span><input id="totalInstallments" type="number" min="1" required placeholder="10" /></div></label>
+        <label class="full">Mês da parcela atual<input id="currentMonth" type="month" required /></label>
+      </div>
+      <div id="purchasePreview" class="preview-box">Preencha os dados para visualizar a projeção das parcelas.</div>
+      <div class="modal-actions"><button type="button" class="secondary-button close-dialog">Cancelar</button><button class="primary-button" value="default">Cadastrar parcelas</button></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
