@@ -8,14 +8,13 @@
 
   const currency=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const monthLongFmt=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'});
-  const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','\"':'&quot;'}[c]));
   const money=v=>currency.format(Number(v)||0);
   const dateFromMonth=key=>{const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1)};
   const addMonths=(key,amount)=>{const d=dateFromMonth(key);d.setMonth(d.getMonth()+amount);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`};
   const formatMonth=key=>monthLongFmt.format(dateFromMonth(key));
   const now=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`};
   const getState=()=>{try{const s=JSON.parse(localStorage.getItem(STORAGE_KEY));return s&&Array.isArray(s.purchases)&&Array.isArray(s.cards)?s:{purchases:[],cards:[]}}catch{return {purchases:[],cards:[]}}};
-  const sourceLabel=p=>p.sourceFinal?`${p.sourceFinal}${p.holder&&p.holder!=='Conta'?` · ${p.holder}`:''}`:'Não identificado';
 
   const headRow=tablePanel.querySelector('thead tr');
   if(headRow&&!headRow.querySelector('[data-source-head]')){
@@ -34,10 +33,14 @@
       <div class="purchase-filter-field"><label>Situação</label><select id="purchaseFilterStatus"><option value="">Todas</option><option value="ending">Termina este mês</option><option value="active">Continua nos próximos meses</option><option value="finished">Já terminou</option></select></div>
       <div class="purchase-filter-field"><label>Ordenar por</label><select id="purchaseSort"><option value="name-asc">Nome A–Z</option><option value="name-desc">Nome Z–A</option><option value="value-desc">Maior parcela</option><option value="value-asc">Menor parcela</option><option value="remaining-desc">Maior saldo restante</option><option value="remaining-asc">Menor saldo restante</option><option value="end-asc">Termina primeiro</option><option value="end-desc">Termina por último</option><option value="progress-desc">Mais avançada</option><option value="progress-asc">Menos avançada</option></select></div>
     </div>
-    <div class="purchase-controls-footer"><span id="purchaseResultsCount" class="purchase-results-count"></span><button id="purchaseClearFilters" class="purchase-clear" type="button">Limpar filtros</button></div>`;
+    <div class="purchase-controls-footer"><span id="purchaseResultsCount" class="purchase-results-count"></span><button id="purchaseClearFilters" class="purchase-clear" type="button">Limpar filtros</button></div>
+    <div class="purchase-totalizers">
+      <div class="purchase-totalizer"><span>Parcelas exibidas / mês</span><strong id="purchaseMonthlyTotal">R$ 0,00</strong><small>Soma do valor das parcelas no filtro atual</small></div>
+      <div class="purchase-totalizer primary"><span>Saldo restante exibido</span><strong id="purchaseRemainingTotal">R$ 0,00</strong><small>Total que ainda falta pagar nas compras filtradas</small></div>
+    </div>`;
   tablePanel.parentNode.insertBefore(controls,tablePanel);
 
-  const search=document.getElementById('purchaseSearch'),cardSel=document.getElementById('purchaseFilterCard'),sourceSel=document.getElementById('purchaseFilterSource'),catSel=document.getElementById('purchaseFilterCategory'),statusSel=document.getElementById('purchaseFilterStatus'),sortSel=document.getElementById('purchaseSort'),countEl=document.getElementById('purchaseResultsCount');
+  const search=document.getElementById('purchaseSearch'),cardSel=document.getElementById('purchaseFilterCard'),sourceSel=document.getElementById('purchaseFilterSource'),catSel=document.getElementById('purchaseFilterCategory'),statusSel=document.getElementById('purchaseFilterStatus'),sortSel=document.getElementById('purchaseSort'),countEl=document.getElementById('purchaseResultsCount'),monthlyTotalEl=document.getElementById('purchaseMonthlyTotal'),remainingTotalEl=document.getElementById('purchaseRemainingTotal');
 
   function syncOptions(){
     const state=getState();
@@ -47,23 +50,55 @@
     sourceSel.innerHTML='<option value="">Todos os finais</option>'+sources.map(s=>{const [f,h]=s.split('|');return `<option value="${esc(s)}">Final ${esc(f)}${h&&h!=='Conta'?` · ${esc(h)}`:''}</option>`}).join('');
     const cats=[...new Set(state.purchases.map(p=>p.category||'Outros'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     catSel.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    if([...cardSel.options].some(o=>o.value===cv))cardSel.value=cv;if([...sourceSel.options].some(o=>o.value===sv))sourceSel.value=sv;if([...catSel.options].some(o=>o.value===catv))catSel.value=catv;
+    if([...cardSel.options].some(o=>o.value===cv))cardSel.value=cv;
+    if([...sourceSel.options].some(o=>o.value===sv))sourceSel.value=sv;
+    if([...catSel.options].some(o=>o.value===catv))catSel.value=catv;
   }
 
   function buildRows(){
     const state=getState(),cards=new Map(state.cards.map(c=>[c.id,c])),monthNow=now();
-    let rows=state.purchases.map(p=>{const end=addMonths(p.currentMonth,p.totalInstallments-p.currentInstallment),remaining=Math.max(0,p.totalInstallments-p.currentInstallment+1),remainingValue=remaining*Number(p.installmentValue||0),progress=Number(p.currentInstallment||0)/Math.max(1,Number(p.totalInstallments||1));return {...p,end,remaining,remainingValue,progress,cardName:cards.get(p.cardId)?.name||'Sem cartão'};});
-    const q=search.value.trim().toLocaleLowerCase('pt-BR');if(q)rows=rows.filter(p=>`${p.description} ${p.category||''} ${p.cardName} ${p.sourceFinal||''} ${p.holder||''}`.toLocaleLowerCase('pt-BR').includes(q));
+    let rows=state.purchases.map(p=>{
+      const end=addMonths(p.currentMonth,p.totalInstallments-p.currentInstallment);
+      const remaining=Math.max(0,p.totalInstallments-p.currentInstallment+1);
+      const remainingValue=remaining*Number(p.installmentValue||0);
+      const progress=Number(p.currentInstallment||0)/Math.max(1,Number(p.totalInstallments||1));
+      return {...p,end,remaining,remainingValue,progress,cardName:cards.get(p.cardId)?.name||'Sem cartão'};
+    });
+    const q=search.value.trim().toLocaleLowerCase('pt-BR');
+    if(q)rows=rows.filter(p=>`${p.description} ${p.category||''} ${p.cardName} ${p.sourceFinal||''} ${p.holder||''}`.toLocaleLowerCase('pt-BR').includes(q));
     if(cardSel.value)rows=rows.filter(p=>p.cardId===cardSel.value);
     if(sourceSel.value){const [f,h]=sourceSel.value.split('|');rows=rows.filter(p=>p.sourceFinal===f&&(p.holder||'')===h)}
     if(catSel.value)rows=rows.filter(p=>(p.category||'Outros')===catSel.value);
-    if(statusSel.value==='ending')rows=rows.filter(p=>p.end===monthNow);if(statusSel.value==='active')rows=rows.filter(p=>p.end>monthNow);if(statusSel.value==='finished')rows=rows.filter(p=>p.end<monthNow);
-    const [field,dir]=sortSel.value.split('-'),mult=dir==='desc'?-1:1;rows.sort((a,b)=>{let cmp=0;if(field==='name')cmp=a.description.localeCompare(b.description,'pt-BR');if(field==='value')cmp=Number(a.installmentValue)-Number(b.installmentValue);if(field==='remaining')cmp=a.remainingValue-b.remainingValue;if(field==='end')cmp=a.end.localeCompare(b.end);if(field==='progress')cmp=a.progress-b.progress;return cmp*mult;});
+    if(statusSel.value==='ending')rows=rows.filter(p=>p.end===monthNow);
+    if(statusSel.value==='active')rows=rows.filter(p=>p.end>monthNow);
+    if(statusSel.value==='finished')rows=rows.filter(p=>p.end<monthNow);
+    const [field,dir]=sortSel.value.split('-'),mult=dir==='desc'?-1:1;
+    rows.sort((a,b)=>{let cmp=0;if(field==='name')cmp=a.description.localeCompare(b.description,'pt-BR');if(field==='value')cmp=Number(a.installmentValue)-Number(b.installmentValue);if(field==='remaining')cmp=a.remainingValue-b.remainingValue;if(field==='end')cmp=a.end.localeCompare(b.end);if(field==='progress')cmp=a.progress-b.progress;return cmp*mult;});
     return {rows,total:state.purchases.length};
   }
 
   const observer=new MutationObserver(()=>setTimeout(render,0));
-  function render(){syncOptions();const {rows,total}=buildRows();observer.disconnect();body.innerHTML=rows.map(p=>`<tr><td><strong>${esc(p.description)}</strong><br><span style="color:#939cad">${esc(p.category||'Outros')}</span></td><td>${esc(p.cardName)}</td><td><strong>Final ${esc(p.sourceFinal||'—')}</strong><br><span style="color:#939cad">${esc(p.holder||'')}</span></td><td><span class="tag">${p.currentInstallment}/${p.totalInstallments}</span></td><td>${money(p.installmentValue)}</td><td>${formatMonth(p.end)}</td><td>${money(p.remainingValue)}</td><td><div class="row-actions"><button class="small-action danger" onclick="deletePurchase('${esc(p.id)}')">Excluir</button></div></td></tr>`).join('');if(empty)empty.style.display='none';let filterEmpty=document.getElementById('purchaseFilteredEmpty');if(!filterEmpty){filterEmpty=document.createElement('div');filterEmpty.id='purchaseFilteredEmpty';filterEmpty.className='purchase-empty-filter';tablePanel.appendChild(filterEmpty)}filterEmpty.style.display=rows.length?'none':'block';filterEmpty.textContent=total?'Nenhuma compra encontrada com os filtros selecionados.':'Nenhuma compra cadastrada.';countEl.textContent=`${rows.length} de ${total} compra${total===1?'':'s'}`;observer.observe(body,{childList:true});}
+  function render(){
+    syncOptions();
+    const {rows,total}=buildRows();
+    const monthlyTotal=rows.reduce((sum,p)=>sum+Number(p.installmentValue||0),0);
+    const remainingTotal=rows.reduce((sum,p)=>sum+Number(p.remainingValue||0),0);
+    monthlyTotalEl.textContent=money(monthlyTotal);
+    remainingTotalEl.textContent=money(remainingTotal);
+
+    observer.disconnect();
+    body.innerHTML=rows.map(p=>`<tr><td><strong>${esc(p.description)}</strong><br><span style="color:#939cad">${esc(p.category||'Outros')}</span></td><td>${esc(p.cardName)}</td><td><strong>Final ${esc(p.sourceFinal||'—')}</strong><br><span style="color:#939cad">${esc(p.holder||'')}</span></td><td><span class="tag">${p.currentInstallment}/${p.totalInstallments}</span></td><td>${money(p.installmentValue)}</td><td>${formatMonth(p.end)}</td><td>${money(p.remainingValue)}</td><td><div class="row-actions"><button class="small-action danger" onclick="deletePurchase('${esc(p.id)}')">Excluir</button></div></td></tr>`).join('');
+    if(empty)empty.style.display='none';
+    let filterEmpty=document.getElementById('purchaseFilteredEmpty');
+    if(!filterEmpty){filterEmpty=document.createElement('div');filterEmpty.id='purchaseFilteredEmpty';filterEmpty.className='purchase-empty-filter';tablePanel.appendChild(filterEmpty)}
+    filterEmpty.style.display=rows.length?'none':'block';
+    filterEmpty.textContent=total?'Nenhuma compra encontrada com os filtros selecionados.':'Nenhuma compra cadastrada.';
+    countEl.textContent=`${rows.length} de ${total} compra${total===1?'':'s'}`;
+    observer.observe(body,{childList:true});
+  }
+
   [search,cardSel,sourceSel,catSel,statusSel,sortSel].forEach(el=>el.addEventListener(el===search?'input':'change',render));
-  document.getElementById('purchaseClearFilters').addEventListener('click',()=>{search.value='';cardSel.value='';sourceSel.value='';catSel.value='';statusSel.value='';sortSel.value='name-asc';render()});observer.observe(body,{childList:true});render();
+  document.getElementById('purchaseClearFilters').addEventListener('click',()=>{search.value='';cardSel.value='';sourceSel.value='';catSel.value='';statusSel.value='';sortSel.value='name-asc';render()});
+  observer.observe(body,{childList:true});
+  render();
 })();
