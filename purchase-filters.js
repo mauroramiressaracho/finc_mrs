@@ -80,11 +80,12 @@
     return {rows,total:state.purchases.length};
   }
 
-  let internal=false;
+  const observer=new MutationObserver(()=>setTimeout(render,0));
+
   function render(){
     syncOptions();
     const {rows,total}=buildRows();
-    internal=true;
+    observer.disconnect();
     body.innerHTML=rows.map(p=>`<tr><td><strong>${esc(p.description)}</strong><br><span style="color:#939cad">${esc(p.category||'Outros')}</span></td><td>${esc(p.cardName)}</td><td><span class="tag">${p.currentInstallment}/${p.totalInstallments}</span></td><td>${money(p.installmentValue)}</td><td>${formatMonth(p.end)}</td><td>${money(p.remainingValue)}</td><td><div class="row-actions"><button class="small-action danger" onclick="deletePurchase('${esc(p.id)}')">Excluir</button></div></td></tr>`).join('');
     if(empty)empty.style.display='none';
     let filterEmpty=document.getElementById('purchaseFilteredEmpty');
@@ -92,13 +93,12 @@
     filterEmpty.style.display=rows.length?'none':'block';
     filterEmpty.textContent=total?'Nenhuma compra encontrada com os filtros selecionados.':'Nenhuma compra cadastrada.';
     countEl.textContent=`${rows.length} de ${total} compra${total===1?'':'s'}`;
-    internal=false;
+    observer.observe(body,{childList:true});
   }
 
   [search,cardSel,catSel,statusSel,sortSel].forEach(el=>el.addEventListener(el===search?'input':'change',render));
   document.getElementById('purchaseClearFilters').addEventListener('click',()=>{search.value='';cardSel.value='';catSel.value='';statusSel.value='';sortSel.value='name-asc';render()});
 
-  const observer=new MutationObserver(()=>{if(!internal)setTimeout(render,0)});
   observer.observe(body,{childList:true});
   render();
 })();
