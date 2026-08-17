@@ -7,6 +7,93 @@
   const money = v => currency.format(v);
   const esc = v => String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
 
+  if (!document.getElementById('spendingDetailStyles')) {
+    const style = document.createElement('style');
+    style.id = 'spendingDetailStyles';
+    style.textContent = `
+      #spendingDetailDialog {
+        width: min(820px, calc(100vw - 32px));
+        max-width: 820px;
+        max-height: calc(100vh - 48px);
+        padding: 0;
+        overflow: hidden;
+      }
+      #spendingDetailDialog .spending-detail-shell {
+        width: 100%;
+        max-width: 100%;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 48px);
+        overflow: hidden;
+      }
+      #spendingDetailDialog .modal-header {
+        flex: 0 0 auto;
+      }
+      #spendingDetailDialog .spending-detail-summary {
+        flex: 0 0 auto;
+        margin: 0 0 16px;
+      }
+      #spendingDetailDialog .spending-detail-table-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      #spendingDetailDialog table {
+        width: 100%;
+        table-layout: fixed;
+      }
+      #spendingDetailDialog th,
+      #spendingDetailDialog td {
+        padding: 13px 14px;
+        vertical-align: top;
+      }
+      #spendingDetailDialog th:nth-child(1),
+      #spendingDetailDialog td:nth-child(1) {
+        width: 82px;
+        white-space: nowrap;
+      }
+      #spendingDetailDialog th:nth-child(2),
+      #spendingDetailDialog td:nth-child(2) {
+        width: auto;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      #spendingDetailDialog th:nth-child(3),
+      #spendingDetailDialog td:nth-child(3) {
+        width: 120px;
+        white-space: nowrap;
+      }
+      #spendingDetailDialog .modal-actions {
+        flex: 0 0 auto;
+        margin-top: 16px;
+      }
+      @media (max-width: 600px) {
+        #spendingDetailDialog {
+          width: calc(100vw - 16px);
+          max-height: calc(100vh - 16px);
+        }
+        #spendingDetailDialog .spending-detail-shell {
+          padding: 16px;
+          max-height: calc(100vh - 16px);
+        }
+        #spendingDetailDialog th,
+        #spendingDetailDialog td {
+          padding: 11px 9px;
+          font-size: 11px;
+        }
+        #spendingDetailDialog th:nth-child(1),
+        #spendingDetailDialog td:nth-child(1) { width: 58px; }
+        #spendingDetailDialog th:nth-child(3),
+        #spendingDetailDialog td:nth-child(3) { width: 94px; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   const nav = document.querySelector('.sidebar nav');
   const dataBtn = nav?.querySelector('[data-section="dados"]');
   if (nav && !nav.querySelector('[data-section="gastos"]')) {
@@ -62,10 +149,10 @@
   const dialog = document.createElement('dialog');
   dialog.id = 'spendingDetailDialog';
   dialog.className = 'modal large';
-  dialog.innerHTML = `<div style="min-width:min(760px,90vw)">
+  dialog.innerHTML = `<div class="spending-detail-shell">
     <div class="modal-header"><div><span class="panel-kicker">LANÇAMENTOS DO MÊS</span><h2 id="spendingDetailTitle">Categoria</h2></div><button type="button" class="icon-button" id="closeSpendingDetail">×</button></div>
-    <div id="spendingDetailSummary" class="preview-box" style="margin-bottom:18px"></div>
-    <div class="table-wrap"><table><thead><tr><th>Data</th><th>Estabelecimento</th><th style="text-align:right">Valor</th></tr></thead><tbody id="spendingDetailBody"></tbody></table></div>
+    <div id="spendingDetailSummary" class="preview-box spending-detail-summary"></div>
+    <div class="spending-detail-table-wrap"><table><thead><tr><th>Data</th><th>Estabelecimento</th><th style="text-align:right">Valor</th></tr></thead><tbody id="spendingDetailBody"></tbody></table></div>
     <div class="modal-actions"><button type="button" class="secondary-button" id="closeSpendingDetail2">Fechar</button></div>
   </div>`;
   document.body.appendChild(dialog);
@@ -80,7 +167,7 @@
     const avg=positive.length?positive.reduce((s,r)=>s+r.value,0)/positive.length:0;
     document.getElementById('spendingDetailTitle').textContent=category;
     document.getElementById('spendingDetailSummary').innerHTML=`<strong>${rows.length} lançamento${rows.length===1?'':'s'}</strong> · Total: <strong>${money(total)}</strong>${positive.length?` · Ticket médio: <strong>${money(avg)}</strong>`:''}`;
-    document.getElementById('spendingDetailBody').innerHTML=rows.map(r=>`<tr><td>${esc(r.date)}</td><td><strong>${esc(r.description)}</strong></td><td style="text-align:right;white-space:nowrap;${r.value<0?'color:#16845b':''}">${money(r.value)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum lançamento encontrado.</td></tr>';
+    document.getElementById('spendingDetailBody').innerHTML=rows.map(r=>`<tr><td>${esc(r.date)}</td><td><strong>${esc(r.description)}</strong></td><td style="text-align:right;${r.value<0?'color:#16845b':''}">${money(r.value)}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum lançamento encontrado.</td></tr>';
     dialog.showModal();
   }
 
